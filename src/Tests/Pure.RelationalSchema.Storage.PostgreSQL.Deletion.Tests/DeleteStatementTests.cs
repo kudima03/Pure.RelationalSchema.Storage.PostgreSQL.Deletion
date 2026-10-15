@@ -88,6 +88,28 @@ public sealed record DeleteStatementTests
     }
 
     [Fact]
+    public void ThrowsWhenRowMissesColumn()
+    {
+        IRow row = new Row(
+            new Dictionary<KeyValuePair<IColumn, string>, IColumn, ICell>(
+                [new KeyValuePair<IColumn, string>(First, "a")],
+                x => x.Key,
+                x => new Cell(new String(x.Value)),
+                x => new ColumnHash(x)
+            )
+        );
+
+        DeleteStatement statement = new DeleteStatement(
+            new String(TableName),
+            new String(SchemaName),
+            [First, Second],
+            [row]
+        );
+
+        _ = Assert.Throws<InvalidOperationException>(() => statement.TextValue);
+    }
+
+    [Fact]
     public void EscapesSingleQuotesInValues()
     {
         DeleteStatement statement = new DeleteStatement(
