@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-preview.0.4.0] - 2026-10-23
+
+### Changed
+
+- Bumped `Pure.Primitives.String.Operations` from 1.6.0 to 1.7.0.
+
 ## [0.1.0-preview.0.3.0] - 2026-10-22
 
 ### Changed
