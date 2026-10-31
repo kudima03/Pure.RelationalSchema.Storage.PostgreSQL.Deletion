@@ -3,6 +3,14 @@ updates:
 - package-ecosystem: nuget
   directories:
     - "src/Pure.RelationalSchema.Storage.PostgreSQL.Deletion"
+  schedule:
+    interval: daily
+  groups:
+    production:
+      patterns:
+        - "*"
+- package-ecosystem: nuget
+  directories:
     - "src/Tests/Pure.RelationalSchema.Storage.PostgreSQL.Deletion.Tests"
   schedule:
     interval: daily
