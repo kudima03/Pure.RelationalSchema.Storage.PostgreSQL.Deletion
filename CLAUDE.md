@@ -49,7 +49,7 @@ CI runs mutation testing via `dotnet-stryker` at `Complete` level with an 86% br
 
 **Multi-targeting:** net8.0, net9.0, net10.0. `IsAotCompatible` is `true` and the build must stay free of IL2026/IL3050 warnings. Do not use `AsQueryable()` in library code (annotated as trim/AOT-unsafe).
 
-**Package validation:** `EnablePackageValidation = true`. `PackageValidationBaselineVersion` is set to the last published version (currently `0.1.0-preview.0.4.0`); update it after each release so breaking API changes fail the build. Package validation runs on `dotnet pack` only (CI's build-and-test does not pack), so a breaking change, such as the replaced constructor of `PostgreSqlStoredSchemaDataSetWithDeletedRows` (`CP0002` against `0.1.0-preview.0.4.0`), needs a `CompatibilitySuppressions.xml` before the release tag is pushed.
+**Package validation:** `EnablePackageValidation = true`. `PackageValidationBaselineVersion` is set to the last published version (currently `0.1.0-preview.1.0.0`); update it after each release so breaking API changes fail the build. Package validation runs on `dotnet pack` only (CI's build-and-test does not pack), so a breaking change needs a `CompatibilitySuppressions.xml` before the release tag is pushed. Delete that file when the baseline is bumped past the break: suppressions that no longer match anything make `dotnet pack` fail with "Unnecessary suppressions found".
 
 **Publishing:** triggered by pushing a semver tag matching `*.*.*`. The tag name becomes the `PackageVersion`. Packages are published to both GitHub Packages and NuGet.org.
 
