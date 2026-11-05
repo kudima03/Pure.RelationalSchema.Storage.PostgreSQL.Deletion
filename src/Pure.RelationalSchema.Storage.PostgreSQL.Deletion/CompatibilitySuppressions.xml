@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- https://learn.microsoft.com/dotnet/fundamentals/package-validation/diagnostic-ids -->
+<Suppressions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Pure.RelationalSchema.Storage.PostgreSQL.Deletion.PostgreSqlStoredSchemaDataSetWithDeletedRows.#ctor(Pure.RelationalSchema.Storage.PostgreSQL.Abstractions.IPostgreSqlStoredSchemaDataSet,System.Collections.Generic.IEnumerable{System.Linq.IGrouping{Pure.RelationalSchema.Abstractions.Table.ITable,Pure.RelationalSchema.Storage.Abstractions.IRow}})</Target>
+    <Left>lib/net10.0/Pure.RelationalSchema.Storage.PostgreSQL.Deletion.dll</Left>
+    <Right>lib/net10.0/Pure.RelationalSchema.Storage.PostgreSQL.Deletion.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Pure.RelationalSchema.Storage.PostgreSQL.Deletion.PostgreSqlStoredSchemaDataSetWithDeletedRows.#ctor(Pure.RelationalSchema.Storage.PostgreSQL.Abstractions.IPostgreSqlStoredSchemaDataSet,System.Collections.Generic.IEnumerable{System.Linq.IGrouping{Pure.RelationalSchema.Abstractions.Table.ITable,Pure.RelationalSchema.Storage.Abstractions.IRow}})</Target>
+    <Left>lib/net8.0/Pure.RelationalSchema.Storage.PostgreSQL.Deletion.dll</Left>
+    <Right>lib/net8.0/Pure.RelationalSchema.Storage.PostgreSQL.Deletion.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Pure.RelationalSchema.Storage.PostgreSQL.Deletion.PostgreSqlStoredSchemaDataSetWithDeletedRows.#ctor(Pure.RelationalSchema.Storage.PostgreSQL.Abstractions.IPostgreSqlStoredSchemaDataSet,System.Collections.Generic.IEnumerable{System.Linq.IGrouping{Pure.RelationalSchema.Abstractions.Table.ITable,Pure.RelationalSchema.Storage.Abstractions.IRow}})</Target>
+    <Left>lib/net9.0/Pure.RelationalSchema.Storage.PostgreSQL.Deletion.dll</Left>
+    <Right>lib/net9.0/Pure.RelationalSchema.Storage.PostgreSQL.Deletion.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+</Suppressions>
