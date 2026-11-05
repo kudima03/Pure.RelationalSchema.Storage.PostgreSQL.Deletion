@@ -112,6 +112,16 @@ public sealed record DatabaseFixture : IDisposable
         return Convert.ToInt64(command.ExecuteScalar());
     }
 
+    public long RowCount(ITable table, IColumn column, string value)
+    {
+        using IDbCommand command = Connection.CreateCommand();
+        command.CommandText =
+            $"SELECT count(*) FROM {QualifiedName(table)} "
+            + $"WHERE \"{Trimmed(new ColumnHash(column))}\" = "
+            + $"'{value.Replace("'", "''")}';";
+        return Convert.ToInt64(command.ExecuteScalar());
+    }
+
     public void Dispose()
     {
         Connection.Dispose();

@@ -25,10 +25,6 @@
     <PackageReference Include="Pure.RelationalSchema.HashCodes" Version="3.3.0" />
     <PackageReference Include="Pure.RelationalSchema.Storage" Version="0.1.0-preview.8.0.0" />
     <PackageReference
-      Include="Pure.RelationalSchema.Storage.HashCodes"
-      Version="0.1.0-preview.2.2.0"
-    />
-    <PackageReference
       Include="Pure.RelationalSchema.Storage.PostgreSQL.Abstractions"
       Version="0.1.0-preview.0.1.0"
     />

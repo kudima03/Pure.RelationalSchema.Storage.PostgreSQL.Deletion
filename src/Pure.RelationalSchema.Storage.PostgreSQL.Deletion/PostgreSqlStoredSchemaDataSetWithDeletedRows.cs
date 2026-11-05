@@ -3,6 +3,7 @@ using System.Data;
 using System.Diagnostics.CodeAnalysis;
 using Pure.Collections.Generic;
 using Pure.Primitives.String.Operations;
+using Pure.RelationalSchema.Abstractions.Column;
 using Pure.RelationalSchema.Abstractions.Schema;
 using Pure.RelationalSchema.Abstractions.Table;
 using Pure.RelationalSchema.HashCodes;
@@ -18,7 +19,7 @@ public sealed record PostgreSqlStoredSchemaDataSetWithDeletedRows
 
     public PostgreSqlStoredSchemaDataSetWithDeletedRows(
         IPostgreSqlStoredSchemaDataSet dataset,
-        IEnumerable<IGrouping<ITable, IRow>> rows
+        IEnumerable<IGrouping<ITable, IEnumerable<KeyValuePair<IColumn, ICell>>>> rows
     )
         : this(
             dataset.Schema,
