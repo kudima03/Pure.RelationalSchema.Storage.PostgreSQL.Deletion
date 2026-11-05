@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-preview.1.0.0] - 2026-11-05
+
 ### Changed
 
 - **Breaking:** `PostgreSqlStoredSchemaDataSetWithDeletedRows` now takes the rows to delete as sets of cells, `IEnumerable<IGrouping<ITable, IEnumerable<KeyValuePair<IColumn, ICell>>>>`, instead of `IEnumerable<IGrouping<ITable, IRow>>`. Pass `row.Cells` to keep deleting whole rows.
