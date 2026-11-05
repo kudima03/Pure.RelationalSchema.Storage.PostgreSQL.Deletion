@@ -4,10 +4,9 @@ using System.Linq.Expressions;
 using Pure.Primitives.Abstractions.Bool;
 using Pure.Primitives.Abstractions.String;
 using Pure.Primitives.Bool;
-using Pure.Primitives.String.Operations;
+using Pure.RelationalSchema.Abstractions.Column;
 using Pure.RelationalSchema.Abstractions.Table;
 using Pure.RelationalSchema.Storage.Abstractions;
-using Pure.RelationalSchema.Storage.HashCodes;
 
 namespace Pure.RelationalSchema.Storage.PostgreSQL.Deletion;
 
@@ -21,18 +20,13 @@ internal sealed record PostgreSqlStoredTableDataSetWithDeletedRows : IStoredTabl
         IStoredTableDataSet dataSet,
         IDbConnection connection,
         IString schemaName,
-        IEnumerable<IRow> rows
+        IEnumerable<IEnumerable<KeyValuePair<IColumn, ICell>>> rows
     )
     {
         _dataSet = dataSet;
         _rowsDeleted = new Lazy<IBool>(() =>
         {
-            IReadOnlyCollection<IRow> rowsToDelete =
-            [
-                .. rows.DistinctBy(x => new HexString(new RowHash(x)).TextValue),
-            ];
-
-            if (rowsToDelete.Count == 0 || !dataSet.TableSchema.Columns.Any())
+            if (!rows.Any())
             {
                 return new True();
             }
@@ -41,7 +35,7 @@ internal sealed record PostgreSqlStoredTableDataSetWithDeletedRows : IStoredTabl
             command.CommandText = new DeleteStatement(
                 dataSet.TableSchema,
                 schemaName,
-                rowsToDelete
+                rows
             ).TextValue;
             _ = command.ExecuteNonQuery();
             return new True();

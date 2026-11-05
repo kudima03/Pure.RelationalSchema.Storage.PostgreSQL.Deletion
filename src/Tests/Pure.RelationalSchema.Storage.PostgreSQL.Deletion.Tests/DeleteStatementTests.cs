@@ -1,5 +1,4 @@
 using System.Collections;
-using Pure.Collections.Generic;
 using Pure.Primitives.Abstractions.Char;
 using Pure.Primitives.String.Operations;
 using Pure.RelationalSchema.Abstractions.Column;
@@ -32,81 +31,125 @@ public sealed record DeleteStatementTests
     );
 
     [Fact]
-    public void ProducesDeleteWithTupleInForEveryRow()
+    public void ProducesDeleteWithConjunctionForEveryRow()
     {
         DeleteStatement statement = new DeleteStatement(
             new String(TableName),
             new String(SchemaName),
-            [First, Second],
-            [Row(("a", "1")), Row(("b", "2"))]
+            [Cells((First, "a"), (Second, "1")), Cells((First, "b"), (Second, "2"))]
         );
 
         Assert.Equal(
-            $"DELETE FROM \"{Trimmed(SchemaName)}\".\"{Trimmed(TableName)}\" WHERE ("
-                + $"\"{Hash(First)}\", \"{Hash(Second)}\""
-                + ") IN (('a', '1'), ('b', '2'));",
+            $"DELETE FROM \"{Trimmed(SchemaName)}\".\"{Trimmed(TableName)}\" WHERE "
+                + $"(\"{Hash(First)}\" = 'a' AND \"{Hash(Second)}\" = '1')"
+                + $" OR (\"{Hash(First)}\" = 'b' AND \"{Hash(Second)}\" = '2');",
             statement.TextValue
         );
     }
 
     [Fact]
-    public void ProducesSingleTupleForSingleRow()
+    public void ProducesSingleConjunctionForSingleRow()
     {
         DeleteStatement statement = new DeleteStatement(
             new String(TableName),
             new String(SchemaName),
-            [First, Second],
-            [Row(("a", "1"))]
+            [Cells((First, "a"), (Second, "1"))]
         );
 
-        Assert.EndsWith(") IN (('a', '1'));", statement.TextValue);
+        Assert.EndsWith(
+            $" WHERE (\"{Hash(First)}\" = 'a' AND \"{Hash(Second)}\" = '1');",
+            statement.TextValue
+        );
     }
 
     [Fact]
-    public void OrdersValuesByColumnsRegardlessOfCellOrder()
+    public void MatchesOnlySuppliedCells()
     {
-        IRow row = new Row(
-            new Dictionary<KeyValuePair<IColumn, string>, IColumn, ICell>(
-                [
-                    new KeyValuePair<IColumn, string>(Second, "1"),
-                    new KeyValuePair<IColumn, string>(First, "a"),
-                ],
-                x => x.Key,
-                x => new Cell(new String(x.Value)),
-                x => new ColumnHash(x)
-            )
-        );
-
         DeleteStatement statement = new DeleteStatement(
             new String(TableName),
             new String(SchemaName),
-            [First, Second],
-            [row]
+            [Cells((Second, "1"))]
         );
 
-        Assert.EndsWith("(('a', '1'));", statement.TextValue);
+        Assert.EndsWith($" WHERE (\"{Hash(Second)}\" = '1');", statement.TextValue);
     }
 
     [Fact]
-    public void ThrowsWhenRowMissesColumn()
+    public void CombinesRowsWithDifferentColumns()
     {
-        IRow row = new Row(
-            new Dictionary<KeyValuePair<IColumn, string>, IColumn, ICell>(
-                [new KeyValuePair<IColumn, string>(First, "a")],
-                x => x.Key,
-                x => new Cell(new String(x.Value)),
-                x => new ColumnHash(x)
-            )
-        );
-
         DeleteStatement statement = new DeleteStatement(
             new String(TableName),
             new String(SchemaName),
-            [First, Second],
-            [row]
+            [Cells((First, "a")), Cells((First, "b"), (Second, "2")), Cells((Second, "3"))]
         );
 
-        _ = Assert.Throws<InvalidOperationException>(() => statement.TextValue);
+        Assert.EndsWith(
+            $" WHERE (\"{Hash(First)}\" = 'a')"
+                + $" OR (\"{Hash(First)}\" = 'b' AND \"{Hash(Second)}\" = '2')"
+                + $" OR (\"{Hash(Second)}\" = '3');",
+            statement.TextValue
+        );
+    }
+
+    [Fact]
+    public void MatchesEveryRowForRowWithoutCells()
+    {
+        DeleteStatement statement = new DeleteStatement(
+            new String(TableName),
+            new String(SchemaName),
+            [Cells()]
+        );
+
+        Assert.Equal(
+            $"DELETE FROM \"{Trimmed(SchemaName)}\".\"{Trimmed(TableName)}\""
+                + " WHERE (TRUE);",
+            statement.TextValue
+        );
+    }
+
+    [Fact]
+    public void CombinesRowWithoutCellsWithOtherRows()
+    {
+        DeleteStatement statement = new DeleteStatement(
+            new String(TableName),
+            new String(SchemaName),
+            [Cells((First, "a")), Cells()]
+        );
+
+        Assert.EndsWith(
+            $" WHERE (\"{Hash(First)}\" = 'a') OR (TRUE);",
+            statement.TextValue
+        );
+    }
+
+    [Fact]
+    public void KeepsSuppliedOrderOfCells()
+    {
+        DeleteStatement statement = new DeleteStatement(
+            new String(TableName),
+            new String(SchemaName),
+            [Cells((Second, "1"), (First, "a"))]
+        );
+
+        Assert.EndsWith(
+            $" WHERE (\"{Hash(Second)}\" = '1' AND \"{Hash(First)}\" = 'a');",
+            statement.TextValue
+        );
+    }
+
+    [Fact]
+    public void KeepsSuppliedOrderOfRows()
+    {
+        DeleteStatement statement = new DeleteStatement(
+            new String(TableName),
+            new String(SchemaName),
+            [Cells((First, "b")), Cells((First, "a"))]
+        );
+
+        Assert.EndsWith(
+            $" WHERE (\"{Hash(First)}\" = 'b') OR (\"{Hash(First)}\" = 'a');",
+            statement.TextValue
+        );
     }
 
     [Fact]
@@ -115,12 +158,12 @@ public sealed record DeleteStatementTests
         DeleteStatement statement = new DeleteStatement(
             new String(TableName),
             new String(SchemaName),
-            [First, Second],
-            [Row(("it's", "'")), Row(("''", "a'b'c"))]
+            [Cells((First, "it's"), (Second, "'")), Cells((First, "''"), (Second, "a'b'c"))]
         );
 
         Assert.EndsWith(
-            "(('it''s', ''''), ('''''', 'a''b''c'));",
+            $" WHERE (\"{Hash(First)}\" = 'it''s' AND \"{Hash(Second)}\" = '''')"
+                + $" OR (\"{Hash(First)}\" = '''''' AND \"{Hash(Second)}\" = 'a''b''c');",
             statement.TextValue
         );
     }
@@ -131,8 +174,7 @@ public sealed record DeleteStatementTests
         DeleteStatement statement = new DeleteStatement(
             new String(new string('t', 100)),
             new String(new string('s', 100)),
-            [First, Second],
-            [Row(("a", "1"))]
+            [Cells((First, "a"))]
         );
 
         Assert.StartsWith(
@@ -142,21 +184,20 @@ public sealed record DeleteStatementTests
     }
 
     [Fact]
-    public void UsesHashOfTableAndItsColumns()
+    public void UsesHashOfTableAndColumnsOfCells()
     {
         ITable table = new Table(new String("Test"), [First, Second], []);
 
         DeleteStatement statement = new DeleteStatement(
             table,
             new String(SchemaName),
-            [Row(("a", "1"))]
+            [Cells((First, "a"), (Second, "1"))]
         );
 
         Assert.Equal(
             $"DELETE FROM \"{Trimmed(SchemaName)}\"."
-                + $"\"{Hash(new TableHash(table))}\" WHERE ("
-                + $"\"{Hash(First)}\", \"{Hash(Second)}\""
-                + ") IN (('a', '1'));",
+                + $"\"{Hash(new TableHash(table))}\" WHERE "
+                + $"(\"{Hash(First)}\" = 'a' AND \"{Hash(Second)}\" = '1');",
             statement.TextValue
         );
     }
@@ -167,8 +208,7 @@ public sealed record DeleteStatementTests
         DeleteStatement statement = new DeleteStatement(
             new String(TableName),
             new String(SchemaName),
-            [First, Second],
-            [Row(("a", "1"))]
+            [Cells((First, "a"))]
         );
 
         Assert.Equal(statement.TextValue, Text(statement));
@@ -180,14 +220,64 @@ public sealed record DeleteStatementTests
         IEnumerable statement = new DeleteStatement(
             new String(TableName),
             new String(SchemaName),
-            [First, Second],
-            [Row(("a", "1"))]
+            [Cells((First, "a"))]
         );
 
         Assert.Equal(
             ((DeleteStatement)statement).TextValue,
             Text(new NonGenericItems(statement).Cast<IChar>())
         );
+    }
+
+    [Fact]
+    public void CellEqualityComparesTrimmedColumnWithQuotedValue()
+    {
+        CellEquality equality = new CellEquality(
+            new String(new string('c', 64)),
+            new String("it's")
+        );
+
+        Assert.Equal($"\"{new string('c', 63)}\" = 'it''s'", equality.TextValue);
+    }
+
+    [Fact]
+    public void CellEqualityEnumeratesCharactersOfText()
+    {
+        CellEquality equality = new CellEquality(Cells((First, "a")).Single());
+
+        Assert.Equal($"\"{Hash(First)}\" = 'a'", Text(equality));
+    }
+
+    [Fact]
+    public void CellEqualityEnumeratesCharactersOfTextNonGenerically()
+    {
+        IEnumerable equality = new CellEquality(Cells((Second, "1")).Single());
+
+        Assert.Equal(
+            $"\"{Hash(Second)}\" = '1'",
+            Text(new NonGenericItems(equality).Cast<IChar>())
+        );
+    }
+
+    [Fact]
+    public void CellsConjunctionEnumeratesCharactersOfText()
+    {
+        CellsConjunction conjunction = new CellsConjunction(
+            Cells((First, "a"), (Second, "1"))
+        );
+
+        Assert.Equal(
+            $"(\"{Hash(First)}\" = 'a' AND \"{Hash(Second)}\" = '1')",
+            Text(conjunction)
+        );
+    }
+
+    [Fact]
+    public void CellsConjunctionEnumeratesCharactersOfTextNonGenerically()
+    {
+        IEnumerable conjunction = new CellsConjunction(Cells());
+
+        Assert.Equal("(TRUE)", Text(new NonGenericItems(conjunction).Cast<IChar>()));
     }
 
     [Fact]
@@ -246,18 +336,16 @@ public sealed record DeleteStatementTests
         return hex[..Math.Min(63, hex.Length)];
     }
 
-    private static IRow Row((string First, string Second) values)
+    private static IEnumerable<KeyValuePair<IColumn, ICell>> Cells(
+        params (IColumn Column, string Value)[] cells
+    )
     {
-        return new Row(
-            new Dictionary<KeyValuePair<IColumn, string>, IColumn, ICell>(
-                [
-                    new KeyValuePair<IColumn, string>(First, values.First),
-                    new KeyValuePair<IColumn, string>(Second, values.Second),
-                ],
-                x => x.Key,
-                x => new Cell(new String(x.Value)),
-                x => new ColumnHash(x)
-            )
-        );
+        return
+        [
+            .. cells.Select(x => new KeyValuePair<IColumn, ICell>(
+                x.Column,
+                new Cell(new String(x.Value))
+            )),
+        ];
     }
 }

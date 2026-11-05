@@ -18,24 +18,24 @@ internal sealed record DeleteStatement : IString
 
     private readonly IString _schemaName;
 
-    private readonly IEnumerable<IColumn> _columns;
+    private readonly IEnumerable<IEnumerable<KeyValuePair<IColumn, ICell>>> _rows;
 
-    private readonly IEnumerable<IRow> _rows;
-
-    public DeleteStatement(ITable table, IString schemaName, IEnumerable<IRow> rows)
-        : this(new HexString(new TableHash(table)), schemaName, table.Columns, rows)
+    public DeleteStatement(
+        ITable table,
+        IString schemaName,
+        IEnumerable<IEnumerable<KeyValuePair<IColumn, ICell>>> rows
+    )
+        : this(new HexString(new TableHash(table)), schemaName, rows)
     { }
 
     public DeleteStatement(
         IString tableName,
         IString schemaName,
-        IEnumerable<IColumn> columns,
-        IEnumerable<IRow> rows
+        IEnumerable<IEnumerable<KeyValuePair<IColumn, ICell>>> rows
     )
     {
         _tableName = tableName;
         _schemaName = schemaName;
-        _columns = columns;
         _rows = rows;
     }
 
@@ -56,48 +56,14 @@ internal sealed record DeleteStatement : IString
                 ]
             ),
             new String("WHERE"),
-            new WrappedString(
-                new LeftRoundBracketString(),
-                new JoinedString(
-                    new ConcatenatedString(new CommaString(), new WhitespaceString()),
-                    _columns.Select(x => new WrappedString(
-                        new DoubleQuoteString(),
-                        new TrimmedHash(new HexString(new ColumnHash(x)))
-                    ))
-                ),
-                new RightRoundBracketString()
-            ),
-            new String("IN"),
             new ConcatenatedString(
-                new WrappedString(
-                    new LeftRoundBracketString(),
-                    new JoinedString(
-                        new ConcatenatedString(new CommaString(), new WhitespaceString()),
-                        _rows.Select(row => new WrappedString(
-                            new LeftRoundBracketString(),
-                            new JoinedString(
-                                new ConcatenatedString(
-                                    new CommaString(),
-                                    new WhitespaceString()
-                                ),
-                                _columns.Select(column => new WrappedString(
-                                    new SingleQuoteString(),
-                                    new SingleQuoteEscapedString(
-                                        row.Cells.First(cell =>
-                                            new HexString(
-                                                new ColumnHash(cell.Key)
-                                            ).TextValue
-                                            == new HexString(
-                                                new ColumnHash(column)
-                                            ).TextValue
-                                        ).Value.Value
-                                    )
-                                ))
-                            ),
-                            new RightRoundBracketString()
-                        ))
+                new JoinedString(
+                    new ConcatenatedString(
+                        new WhitespaceString(),
+                        new String("OR"),
+                        new WhitespaceString()
                     ),
-                    new RightRoundBracketString()
+                    _rows.Select(x => new CellsConjunction(x))
                 ),
                 new SemicolonString()
             )

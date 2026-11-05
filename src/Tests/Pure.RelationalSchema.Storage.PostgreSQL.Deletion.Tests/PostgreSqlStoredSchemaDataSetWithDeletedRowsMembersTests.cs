@@ -235,7 +235,7 @@ public sealed record PostgreSqlStoredSchemaDataSetWithDeletedRowsMembersTests
         IPostgreSqlStoredSchemaDataSet dataSet =
             new PostgreSqlStoredSchemaDataSetWithDeletedRows(
                 schema,
-                [new Grouping(table, rows)]
+                [new CellsGrouping(table, rows.Select(x => x.Cells))]
             );
 
         _ = await dataSet[table].ToArrayAsync();
@@ -254,7 +254,7 @@ public sealed record PostgreSqlStoredSchemaDataSetWithDeletedRowsMembersTests
         IPostgreSqlStoredSchemaDataSet dataSet =
             new PostgreSqlStoredSchemaDataSetWithDeletedRows(
                 schema,
-                [new Grouping(table, rows)]
+                [new CellsGrouping(table, rows.Select(x => x.Cells))]
             );
 
         Assert.Equal(ExistingRowsCount, dataSet[table].AsEnumerable().Count());
@@ -272,7 +272,7 @@ public sealed record PostgreSqlStoredSchemaDataSetWithDeletedRowsMembersTests
         IPostgreSqlStoredSchemaDataSet dataSet =
             new PostgreSqlStoredSchemaDataSetWithDeletedRows(
                 schema,
-                [new Grouping(table, rows)]
+                [new CellsGrouping(table, rows.Select(x => x.Cells))]
             );
 
         _ = dataSet[table].Provider;
@@ -291,7 +291,7 @@ public sealed record PostgreSqlStoredSchemaDataSetWithDeletedRowsMembersTests
         IPostgreSqlStoredSchemaDataSet dataSet =
             new PostgreSqlStoredSchemaDataSetWithDeletedRows(
                 schema,
-                [new Grouping(table, rows)]
+                [new CellsGrouping(table, rows.Select(x => x.Cells))]
             );
 
         _ = dataSet[table].Expression;
@@ -310,7 +310,7 @@ public sealed record PostgreSqlStoredSchemaDataSetWithDeletedRowsMembersTests
         IPostgreSqlStoredSchemaDataSet dataSet =
             new PostgreSqlStoredSchemaDataSetWithDeletedRows(
                 schema,
-                [new Grouping(table, rows)]
+                [new CellsGrouping(table, rows.Select(x => x.Cells))]
             );
 
         _ = dataSet[table].ElementType;

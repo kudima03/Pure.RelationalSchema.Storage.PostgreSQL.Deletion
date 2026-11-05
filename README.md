@@ -9,21 +9,26 @@ PostgreSQL row deletion for the **Pure** relational schema ecosystem — `DELETE
 
 ## Overview
 
-`Pure.RelationalSchema.Storage.PostgreSQL.Deletion` deletes rows from a live PostgreSQL database through the storage abstractions defined in `Pure.RelationalSchema.Storage`. `PostgreSqlStoredSchemaDataSetWithDeletedRows` wraps any `IPostgreSqlStoredSchemaDataSet` (the usual implementation is `PostgreSqlStoredSchemaDataSet` from `Pure.RelationalSchema.Storage.PostgreSQL.Querying`) and a set of rows grouped by table. One `DELETE` statement per table is executed lazily, the first time a table dataset of the result is accessed. After that, the result exposes the wrapped dataset, so the remaining rows can be read back through the same `IStoredTableDataSet`.
+`Pure.RelationalSchema.Storage.PostgreSQL.Deletion` deletes rows from a live PostgreSQL database through the storage abstractions defined in `Pure.RelationalSchema.Storage`. `PostgreSqlStoredSchemaDataSetWithDeletedRows` wraps any `IPostgreSqlStoredSchemaDataSet` (the usual implementation is `PostgreSqlStoredSchemaDataSet` from `Pure.RelationalSchema.Storage.PostgreSQL.Querying`) and, grouped by table, the cells that identify the rows to delete. One `DELETE` statement per table is executed lazily, the first time a table dataset of the result is accessed. After that, the result exposes the wrapped dataset, so the remaining rows can be read back through the same `IStoredTableDataSet`.
 
-Rows have no primary key, so **a row is matched by all of its cells**:
+Rows have no primary key, so a row to delete is described by **some of its cells**: each entry of a grouping is an `IEnumerable<KeyValuePair<IColumn, ICell>>`. A whole row can be passed as `row.Cells`, but an entry may hold only the cells the caller knows, for example the key columns. Every entry becomes one group of equalities joined by `AND`, and the groups are joined by `OR`:
 
 ```sql
-DELETE FROM "<schema>"."<table>" WHERE ("<c1>", "<c2>", …) IN (('v1', 'v2', …), …);
+DELETE FROM "<schema>"."<table>" WHERE ("<c1>" = 'v1' AND "<c2>" = 'v2') OR ("<c1>" = 'v3');
 ```
 
-Every column is created `NOT NULL`, so the tuple comparison is exact. Matching works as follows:
+Matching works as follows:
 
-- Duplicate rows in the supplied batch are de-duplicated by `RowHash`.
-- Every stored copy of a matching row is deleted, not just one.
-- Supplying rows that are not stored is a no-op.
-- Nothing is executed when a table's grouping is empty or the table has no columns.
-- Wrapping the result again with the same rows deletes nothing more.
+- A stored row matches an entry when every cell of the entry equals the stored value of its column. Columns the entry does not mention are not compared.
+- An entry holding a cell for every column matches whole rows, exactly as before.
+- Entries of one table may name different columns; a stored row is deleted when it matches any of them.
+- An entry with no cells matches every row, so it deletes **all rows of its table** (it renders as `(TRUE)`). This is also how the rows of a table without columns are deleted.
+- Every matching stored row is deleted, not just one. An entry that matches nothing is a no-op; no error is raised for zero or many matches.
+- Nothing is executed when a table's grouping has no entries.
+- Duplicate entries are not removed; they repeat a condition in the `WHERE` clause and do not change the result. Wrapping the result again with the same entries deletes nothing more.
+- Cells are rendered in the order they are supplied, entries in the order of the grouping.
+- A cell whose column does not belong to the table is not checked by the package: it names a column the table does not have, so PostgreSQL rejects the statement (`42703 undefined_column`), nothing is deleted from that table, and the `PostgresException` is thrown again on every later access to that table dataset.
+- Foreign keys are not handled by the package. Whatever the constraints created by `Pure.RelationalSchema.Storage.PostgreSQL.Creation` do with the `DELETE` (reject it or cascade) is the outcome.
 
 The result exposes **only the tables present in the supplied groupings**, not every table of the wrapped dataset. This matches `PostgreSqlStoredSchemaDataSetWithInsertedRows` from the Insertion package.
 
@@ -33,15 +38,23 @@ This package covers deletes only. Creating the tables, reading rows and insertin
 
 | Type | Kind | Description |
 |------|------|-------------|
-| `PostgreSqlStoredSchemaDataSetWithDeletedRows` | record | Wraps an `IPostgreSqlStoredSchemaDataSet` and deletes grouped `IRow` data from the corresponding tables, matching each row by all of its cells; implements `IPostgreSqlStoredSchemaDataSet` |
+| `PostgreSqlStoredSchemaDataSetWithDeletedRows` | record | Wraps an `IPostgreSqlStoredSchemaDataSet` and deletes, from the corresponding tables, the rows matching any of the supplied sets of cells; implements `IPostgreSqlStoredSchemaDataSet` |
 
-The constructor takes any `IPostgreSqlStoredSchemaDataSet`. The table-level decorator, `DeleteStatement` and the hashing and escaping helpers are internal. `IPostgreSqlStoredSchemaDataSet` comes from `Pure.RelationalSchema.Storage.PostgreSQL.Abstractions`; this package does not depend on Querying, Creation or Insertion.
+The constructor is:
+
+```csharp
+public PostgreSqlStoredSchemaDataSetWithDeletedRows(
+    IPostgreSqlStoredSchemaDataSet dataset,
+    IEnumerable<IGrouping<ITable, IEnumerable<KeyValuePair<IColumn, ICell>>>> rows
+)
+```
+
+It takes any `IPostgreSqlStoredSchemaDataSet`. The table-level decorator, `DeleteStatement` and the hashing and escaping helpers are internal. `IPostgreSqlStoredSchemaDataSet` comes from `Pure.RelationalSchema.Storage.PostgreSQL.Abstractions`; this package does not depend on Querying, Creation or Insertion.
 
 ## Dependencies
 
 - [`Pure.RelationalSchema.Storage.PostgreSQL.Abstractions`](https://github.com/kudima03/Pure.RelationalSchema.Storage.PostgreSQL.Abstractions/tree/0.1.0-preview.0.1.0) — provides `IPostgreSqlStoredSchemaDataSet`
-- [`Pure.RelationalSchema.Storage`](https://github.com/kudima03/Pure.RelationalSchema.Storage/tree/0.1.0-preview.8.0.0) — storage abstractions (`IStoredSchemaDataSet`, `IStoredTableDataSet`, `IRow`) that this package implements
-- [`Pure.RelationalSchema.Storage.HashCodes`](https://github.com/kudima03/Pure.RelationalSchema.Storage.HashCodes/tree/0.1.0-preview.2.2.0) — `RowHash`, used to de-duplicate the supplied rows
+- [`Pure.RelationalSchema.Storage`](https://github.com/kudima03/Pure.RelationalSchema.Storage/tree/0.1.0-preview.8.0.0) — storage abstractions (`IStoredSchemaDataSet`, `IStoredTableDataSet`, `IRow`, `ICell`) that this package implements
 - [`Pure.RelationalSchema.HashCodes`](https://github.com/kudima03/Pure.RelationalSchema.HashCodes/tree/3.3.0) — hash codes used to derive PostgreSQL object names
 - [`Pure.Primitives.Abstractions`](https://github.com/kudima03/Pure.Primitives.Abstractions/tree/4.3.0) — base interfaces for primitive types (`IString`, `IBool`, etc.)
 - [`Pure.Primitives`](https://github.com/kudima03/Pure.Primitives/tree/3.7.0) — concrete primitive type implementations
@@ -102,21 +115,37 @@ IPostgreSqlStoredSchemaDataSet dataSet =
 IRow alice = User("1", "Alice");
 IRow bob = User("2", "Bob");
 IRow carol = User("3", "Carol O'Brien");
+IRow dave = User("4", "Dave");
 
 IPostgreSqlStoredSchemaDataSet withInserted =
     new PostgreSqlStoredSchemaDataSetWithInsertedRows(
         dataSet,
-        [new TableRows(usersTable, [alice, bob])]
+        [new TableRows<IRow>(usersTable, [alice, bob, carol])]
     );
 
 // Both decorators are lazy: the INSERT runs on first access to the table dataset.
 _ = withInserted[usersTable].TableSchema;
 
-// Rows are matched by all of their cells. Carol is not stored, so she is a no-op.
+// Alice is matched by all of her cells, Carol by her Id only. Dave is not stored,
+// so his entry is a no-op.
 IPostgreSqlStoredSchemaDataSet withDeleted =
     new PostgreSqlStoredSchemaDataSetWithDeletedRows(
         dataSet,
-        [new TableRows(usersTable, [alice, carol])]
+        [
+            new TableRows<IEnumerable<KeyValuePair<IColumn, ICell>>>(
+                usersTable,
+                [
+                    alice.Cells,
+                    [
+                        new KeyValuePair<IColumn, ICell>(
+                            idColumn,
+                            new Cell(new String("3"))
+                        ),
+                    ],
+                    dave.Cells,
+                ]
+            ),
+        ]
     );
 
 foreach (IRow row in withDeleted[usersTable])
@@ -141,11 +170,11 @@ IRow User(string id, string name)
 
 // Rows are supplied grouped by table. LINQ's GroupBy cannot be used here: it hashes
 // the key, and ITable implementations do not support GetHashCode.
-internal sealed class TableRows : IGrouping<ITable, IRow>
+internal sealed class TableRows<T> : IGrouping<ITable, T>
 {
-    private readonly IEnumerable<IRow> _rows;
+    private readonly IEnumerable<T> _rows;
 
-    public TableRows(ITable key, IEnumerable<IRow> rows)
+    public TableRows(ITable key, IEnumerable<T> rows)
     {
         Key = key;
         _rows = rows;
@@ -153,7 +182,7 @@ internal sealed class TableRows : IGrouping<ITable, IRow>
 
     public ITable Key { get; }
 
-    public IEnumerator<IRow> GetEnumerator()
+    public IEnumerator<T> GetEnumerator()
     {
         return _rows.GetEnumerator();
     }
@@ -165,13 +194,15 @@ internal sealed class TableRows : IGrouping<ITable, IRow>
 }
 ```
 
-`GroupBy` cannot be used to group the rows: it hashes the key, and `ITable` implementations do not support `GetHashCode`, so supply your own `IGrouping<ITable, IRow>` as above. Every cell value is an `IString`, compared with the stored value after PostgreSQL coerces the quoted literal to the column type.
+`GroupBy` cannot be used to group the rows: it hashes the key, and `ITable` implementations do not support `GetHashCode`, so supply your own `IGrouping<ITable, …>` as above. Every cell value is an `IString`, compared with the stored value after PostgreSQL coerces the quoted literal to the column type.
 
 ## Known limitations
 
-- **Quote escaping differs from Insertion.** Values are written as quoted string literals, and embedded single quotes are escaped by doubling them. `Pure.RelationalSchema.Storage.PostgreSQL.Insertion` does **not** escape them yet, so a value containing `'` can be deleted by this package but cannot be inserted by Insertion. Values are inlined rather than sent as parameters, so do not pass untrusted input.
-- **Rows are matched by value.** Every supplied row must have a cell for every column of its table; a row missing a column throws `InvalidOperationException` on first access. There is no way to delete only one of several identical stored rows.
-- **All rows go into one statement.** Each table gets a single `DELETE … IN (…)` statement holding every supplied row. Very large batches produce very large SQL text.
+- **Values are inlined.** Values are written as quoted string literals with embedded single quotes doubled; they are not sent as parameters, so do not pass untrusted input.
+- **Rows are matched by value.** There is no way to delete only one of several stored rows that match the same entry.
+- **An empty entry deletes the whole table.** An entry with no cells is not an error; it matches every row of its table.
+- **Foreign columns are not checked.** A cell whose column is not part of the table fails in PostgreSQL, not in the package.
+- **All entries go into one statement.** Each table gets a single `DELETE` holding every supplied entry. Very large batches produce very large SQL text.
 - **Only supplied tables are exposed.** Tables of the wrapped dataset that have no grouping are not exposed by the result.
 
 ## Related packages
