@@ -66,6 +66,7 @@ It takes any `IPostgreSqlStoredSchemaDataSet`. The table-level decorator, `Delet
 - .NET 8
 - .NET 9
 - .NET 10
+- .NET 11
 
 ## Installation
 
